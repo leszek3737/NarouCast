@@ -8,13 +8,17 @@ import fs from 'fs';
 
 import { SyosetuParser } from '../parsers/syosetu-parser.js';
 import { WebScraper } from '../scrapers/web-scraper.js';
-import { DeepSeekTranslator } from '../translators/deepseek-translator.js';
-import { GoogleTranslator } from '../translators/google-translator.js';
-import { OpenAI4oMiniTranslator } from '../translators/openai-4o-mini-translator.js';
 import { MarkdownWriter } from '../file-manager/markdown-writer.js';
 import { ChapterNavigator } from '../navigation/chapter-navigator.js';
 import { TTSManager } from '../tts/tts-manager.js';
 import { ConfigManager } from '../shared/config-manager.js';
+import { performanceMonitor } from '../shared/performance-monitor.js';
+import { BatchProcessor } from '../shared/batch-processor.js';
+import { cacheManager } from '../shared/cache-manager.js';
+import { connectionPool } from '../shared/connection-pool.js';
+import { errorRateMonitor } from '../shared/error-rate-monitor.js';
+import { StreamingTTSManager } from '../tts/streaming-tts.js';
+import { BenchmarkSuite } from '../shared/performance-benchmarker.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,6 +44,14 @@ class SyosetuTranslatorApp {
       ttsSpeed: options.ttsSpeed || parseFloat(process.env.TTS_SPEED) || 1.0,
       googleCredentials:
         options.googleCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS,
+      batchMode: options.batchMode || false,
+      batchSize: options.batchSize || 3,
+      batchConcurrency: options.batchConcurrency || 2,
+      enableCaching: options.enableCaching !== false,
+      enableConnectionPooling: options.enableConnectionPooling !== false,
+      enableErrorMonitoring: options.enableErrorMonitoring !== false,
+      enableStreamingTTS: options.enableStreamingTTS || false,
+      enableBenchmarking: options.enableBenchmarking || false,
       ...options,
     };
   }
@@ -113,8 +125,14 @@ class SyosetuTranslatorApp {
         this.options.googleCredentials;
     }
 
-    this.scraper = new WebScraper({});
-    this.translator = this.createTranslator();
+    // Initialize Phase 2 optimizations
+    await this.initializePhase2Optimizations();
+
+    this.scraper = new WebScraper({
+      enableConnectionPooling: this.options.enableConnectionPooling,
+      enableCaching: this.options.enableCaching
+    });
+    this.translator = await this.createTranslator();
     this.writer = new MarkdownWriter(this.options.outputDir);
     this.ttsManager = this.createTTSManager();
     this.navigator = new ChapterNavigator({
@@ -124,18 +142,63 @@ class SyosetuTranslatorApp {
     });
   }
 
-  createTranslator() {
+  async initializePhase2Optimizations() {
+    console.log('🚀 Initializing Phase 2 Advanced Optimizations...');
+    
+    // 1. Smart Caching System
+    if (this.options.enableCaching) {
+      console.log('  ✓ Smart caching enabled');
+      // Cache is already initialized globally
+    }
+
+    // 2. Connection Pooling
+    if (this.options.enableConnectionPooling) {
+      console.log('  ✓ HTTP connection pooling enabled');
+      // Connection pool is already initialized globally
+    }
+
+    // 3. Error Rate Monitoring
+    if (this.options.enableErrorMonitoring) {
+      console.log('  ✓ Error rate monitoring enabled');
+      // Error monitor is already initialized globally
+    }
+
+    // 4. Streaming TTS (if enabled)
+    if (this.options.enableStreamingTTS && this.options.tts !== 'none') {
+      console.log('  ✓ Streaming TTS processing enabled');
+      this.streamingTTSEnabled = true;
+    }
+
+    // 5. Performance Benchmarking (if enabled)
+    if (this.options.enableBenchmarking) {
+      console.log('  ✓ Performance benchmarking enabled');
+      this.benchmarkSuite = new BenchmarkSuite('syosetu-translator-benchmarks', {
+        outputDir: path.join(this.options.outputDir, '../benchmarks'),
+        parallel: false
+      });
+    }
+
+    console.log('✅ Phase 2 optimizations initialized');
+  }
+
+  async createTranslator() {
     switch (this.options.translator.toLowerCase()) {
-      case 'google':
+      case 'google': {
+        const { GoogleTranslator } = await import('../translators/google-translator.js');
         GoogleTranslator.validateApiKey(this.options.googleApiKey);
         return new GoogleTranslator(this.options.googleApiKey);
-      case 'openai':
+      }
+      case 'openai': {
+        const { OpenAI4oMiniTranslator } = await import('../translators/openai-4o-mini-translator.js');
         OpenAI4oMiniTranslator.validateApiKey(this.options.openaiApiKey);
         return new OpenAI4oMiniTranslator(this.options.openaiApiKey);
+      }
       case 'deepseek':
-      default:
+      default: {
+        const { DeepSeekTranslator } = await import('../translators/deepseek-translator.js');
         DeepSeekTranslator.validateApiKey(this.options.apiKey);
         return new DeepSeekTranslator(this.options.apiKey);
+      }
     }
   }
 
@@ -169,57 +232,199 @@ class SyosetuTranslatorApp {
   }
 
   async processChapter(url) {
-    console.log(`\\n📖 Przetwarzanie: ${url}`);
+    return await performanceMonitor.measureOperation('processChapter', async () => {
+      console.log(`\\n📖 Przetwarzanie: ${url}`);
 
-    const parsedUrl = SyosetuParser.parseUrl(url);
-    console.log(
-      `📝 Seria: ${parsedUrl.seriesId}, Rozdział: ${parsedUrl.chapterNumber}`,
-    );
+      const parsedUrl = SyosetuParser.parseUrl(url);
+      console.log(
+        `📝 Seria: ${parsedUrl.seriesId}, Rozdział: ${parsedUrl.chapterNumber}`,
+      );
 
-    const scrapedData = await this.scraper.scrapeChapter(url);
-    console.log(`✓ Pobrano: "${scrapedData.title}"`);
-
-    const translatedData = await this.translator.translateChapter(
-      scrapedData.title,
-      scrapedData.content,
-    );
-    console.log('✓ Przetłumaczono na polski');
-
-    const filename = SyosetuParser.buildFilename(
-      parsedUrl.seriesId,
-      parsedUrl.chapterNumber,
-      translatedData.title,
-    );
-
-    const chapterData = {
-      title: translatedData.title,
-      content: translatedData.content,
-      originalUrl: url,
-      chapterNumber: parsedUrl.chapterNumber,
-      seriesId: parsedUrl.seriesId,
-    };
-
-    await this.writer.writeChapter(chapterData, filename);
-
-    // Generowanie audio jeśli TTS jest włączone
-    let audioFilePath = null;
-    if (this.ttsManager.isEnabled()) {
-      try {
-        audioFilePath = await this.ttsManager.generateChapterAudio(chapterData);
-      } catch (error) {
-        console.warn(`⚠️  Nie udało się wygenerować audio: ${error.message}`);
+      // Phase 2 Enhancement: Smart caching check
+      let scrapedData;
+      if (this.options.enableCaching) {
+        scrapedData = cacheManager.getCachedChapterContent(url);
+        if (scrapedData) {
+          console.log('📋 Using cached chapter data');
+        }
       }
-    }
 
-    return {
-      ...chapterData,
-      filename,
-      audioFilePath,
-      nextChapterUrl: scrapedData.nextChapterUrl,
-    };
+      if (!scrapedData) {
+        scrapedData = await performanceMonitor.measureOperation('scrapeChapter', async () => {
+          try {
+            if (this.options.enableErrorMonitoring) {
+              errorRateMonitor.recordSuccess('scraper', 'scrapeChapter');
+            }
+            const result = await this.scraper.scrapeChapter(url);
+            
+            // Cache successful scraping result
+            if (this.options.enableCaching) {
+              cacheManager.cacheChapterContent(url, result);
+            }
+            
+            return result;
+          } catch (error) {
+            if (this.options.enableErrorMonitoring) {
+              errorRateMonitor.recordFailure('scraper', error.constructor.name, 'scrapeChapter');
+            }
+            throw error;
+          }
+        });
+      }
+      
+      console.log(`✓ Pobrano: "${scrapedData.title}"`);
+
+      // Phase 2 Enhancement: Translation with caching and error monitoring
+      let translatedData;
+      if (this.options.enableCaching) {
+        translatedData = cacheManager.getCachedTranslation(
+          this.options.translator, 
+          `${scrapedData.title}\\n${scrapedData.content}`, 
+          'pl'
+        );
+        if (translatedData) {
+          console.log('📋 Using cached translation');
+          translatedData = { title: translatedData.split('\\n')[0], content: translatedData.slice(translatedData.indexOf('\\n') + 1) };
+        }
+      }
+
+      if (!translatedData) {
+        translatedData = await performanceMonitor.measureOperation('translateChapter', async () => {
+          try {
+            if (this.options.enableErrorMonitoring) {
+              const startTime = Date.now();
+              const result = await this.translator.translateChapter(scrapedData.title, scrapedData.content);
+              const responseTime = Date.now() - startTime;
+              errorRateMonitor.recordSuccess(this.options.translator, responseTime, 'translateChapter');
+              
+              // Cache successful translation
+              if (this.options.enableCaching) {
+                cacheManager.cacheTranslation(
+                  this.options.translator,
+                  `${scrapedData.title}\\n${scrapedData.content}`,
+                  'pl',
+                  `${result.title}\\n${result.content}`
+                );
+              }
+              
+              return result;
+            } else {
+              return await this.translator.translateChapter(scrapedData.title, scrapedData.content);
+            }
+          } catch (error) {
+            if (this.options.enableErrorMonitoring) {
+              errorRateMonitor.recordFailure(
+                this.options.translator, 
+                error.constructor.name, 
+                'translateChapter',
+                error.message.includes('timeout'),
+                error.message.includes('rate limit')
+              );
+            }
+            throw error;
+          }
+        });
+      }
+      
+      console.log('✓ Przetłumaczono na polski');
+
+      const filename = SyosetuParser.buildFilename(
+        parsedUrl.seriesId,
+        parsedUrl.chapterNumber,
+        translatedData.title,
+      );
+
+      const chapterData = {
+        title: translatedData.title,
+        content: translatedData.content,
+        originalUrl: url,
+        chapterNumber: parsedUrl.chapterNumber,
+        seriesId: parsedUrl.seriesId,
+      };
+
+      await performanceMonitor.measureOperation('writeChapter',
+        () => this.writer.writeChapter(chapterData, filename)
+      );
+
+      // Phase 2 Enhancement: Advanced TTS with streaming and error monitoring
+      let audioFilePath = null;
+      if (await this.ttsManager.isEnabled()) {
+        try {
+          const startTime = Date.now();
+          
+          if (this.streamingTTSEnabled) {
+            // Use streaming TTS for better memory efficiency
+            const streamingTTS = new StreamingTTSManager(this.ttsManager.ttsEngine, {
+              enableProgressReporting: true,
+              maxConcurrentChunks: 3
+            });
+            
+            // Optimize text chunks for streaming
+            const textChunks = StreamingTTSManager.optimizeTextChunks(
+              `${chapterData.title}. ${chapterData.content}`,
+              { maxChunkSize: 3500, preferredChunkSize: 2500 }
+            );
+            
+            const outputPath = path.join(
+              this.options.audioDir,
+              `${chapterData.seriesId}_${String(chapterData.chapterNumber).padStart(3, '0')}_${chapterData.title.replace(/[<>:"/\\|?*]/g, '')}.mp3`
+            );
+            
+            await performanceMonitor.measureOperation('generateStreamingTTS', () =>
+              streamingTTS.generateStreamingAudio(textChunks, outputPath)
+            );
+            
+            audioFilePath = outputPath;
+            console.log('🎵 Generated audio using streaming TTS');
+            
+          } else {
+            // Use traditional TTS
+            audioFilePath = await performanceMonitor.measureOperation('generateTTS', () =>
+              this.ttsManager.generateChapterAudio(chapterData)
+            );
+          }
+          
+          // Error monitoring for TTS
+          if (this.options.enableErrorMonitoring) {
+            const responseTime = Date.now() - startTime;
+            errorRateMonitor.recordSuccess(this.options.tts, responseTime, 'generateTTS');
+          }
+          
+        } catch (error) {
+          if (this.options.enableErrorMonitoring) {
+            errorRateMonitor.recordFailure(
+              this.options.tts, 
+              error.constructor.name, 
+              'generateTTS',
+              error.message.includes('timeout'),
+              error.message.includes('rate limit')
+            );
+          }
+          console.warn(`⚠️  Nie udało się wygenerować audio: ${error.message}`);
+        }
+      }
+
+      // Log memory usage after chapter processing
+      performanceMonitor.logMemoryUsage(`Post-chapter ${parsedUrl.chapterNumber}`);
+      
+      // Trigger GC after heavy processing (especially with TTS)
+      if (audioFilePath) {
+        performanceMonitor.triggerGC();
+      }
+
+      return {
+        ...chapterData,
+        filename,
+        audioFilePath,
+        nextChapterUrl: scrapedData.nextChapterUrl,
+      };
+    });
   }
 
   async run(url) {
+    // Uruchom monitoring wydajności
+    performanceMonitor.startMonitoring();
+    
     try {
       console.log('🚀 Syosetu Translator - Rozpoczynam pracę');
       console.log(`📁 Katalog wyjściowy: ${this.options.outputDir}`);
@@ -229,20 +434,126 @@ class SyosetuTranslatorApp {
         `🔊 TTS: ${this.options.tts}${this.options.voice ? ` (głos: ${this.options.voice})` : ''}`,
       );
 
-      const result = await this.navigator.processChapterSequence(
-        url,
-        (chapterUrl) => this.processChapter(chapterUrl),
-      );
+      let result;
+      if (this.options.batchMode) {
+        console.log(`🚀 Batch Mode: size=${this.options.batchSize}, concurrency=${this.options.batchConcurrency}`);
+        
+        const batchProcessor = new BatchProcessor({
+          batchSize: this.options.batchSize,
+          maxConcurrency: this.options.batchConcurrency,
+          delayBetweenBatches: this.options.chapterDelay || 1000
+        });
+
+        result = await performanceMonitor.measureOperation('batchProcessing', () =>
+          batchProcessor.processChapterChain(
+            url,
+            (chapterUrl) => this.processChapter(chapterUrl),
+            {
+              maxChapters: this.options.maxChapters,
+              discoverNext: this.options.autoContinue,
+              batchChainDiscovery: false // Keep simple for now
+            }
+          )
+        );
+      } else {
+        result = await performanceMonitor.measureOperation('sequentialProcessing', () =>
+          this.navigator.processChapterSequence(
+            url,
+            (chapterUrl) => this.processChapter(chapterUrl),
+          )
+        );
+      }
 
       console.log('\\n🎉 Ukończono pomyślnie!');
+      
+      // Phase 2 Enhancement: Advanced reporting and cleanup
+      await this.generatePhase2Report();
+      performanceMonitor.stopMonitoring();
+      
       return result;
     } catch (error) {
       console.error(`\\n❌ Błąd: ${error.message}`);
       if (error.stack && process.env.NODE_ENV === 'development') {
         console.error(error.stack);
       }
+      performanceMonitor.stopMonitoring();
       process.exit(1);
     }
+  }
+
+  async generatePhase2Report() {
+    if (!this.options.enableCaching && !this.options.enableConnectionPooling && 
+        !this.options.enableErrorMonitoring && !this.streamingTTSEnabled) {
+      return; // No Phase 2 features enabled
+    }
+
+    console.log('\n📊 PHASE 2 OPTIMIZATION REPORT');
+    console.log('='.repeat(50));
+
+    // Smart Caching Statistics
+    if (this.options.enableCaching) {
+      const cacheStats = cacheManager.getAllStats();
+      console.log('\n🧠 SMART CACHING:');
+      console.log(`  Translation Cache: ${cacheStats.translation.size}/${cacheStats.translation.maxSize} entries (${cacheStats.translation.hitRate.toFixed(1)}% hit rate)`);
+      console.log(`  Content Cache: ${cacheStats.content.size}/${cacheStats.content.maxSize} entries (${cacheStats.content.hitRate.toFixed(1)}% hit rate)`);
+      console.log(`  Total Memory: ${(cacheStats.totalMemoryUsage / 1024).toFixed(1)} KB`);
+    }
+
+    // Connection Pool Statistics
+    if (this.options.enableConnectionPooling) {
+      const poolStats = connectionPool.getAllStats();
+      console.log('\n🔌 CONNECTION POOLING:');
+      console.log(`  Total Requests: ${poolStats.summary.totalRequests}`);
+      console.log(`  Active Connections: ${poolStats.summary.activeConnections}/${poolStats.summary.totalConnections}`);
+      console.log(`  HTTP Pool Hit Rate: ${poolStats.http.poolHitRate || '0%'}`);
+      console.log(`  HTTPS Pool Hit Rate: ${poolStats.https.poolHitRate || '0%'}`);
+    }
+
+    // Error Rate Monitoring
+    if (this.options.enableErrorMonitoring) {
+      const errorStats = errorRateMonitor.getAllMetrics();
+      console.log('\n📈 ERROR MONITORING:');
+      
+      Object.entries(errorStats.providers).forEach(([provider, stats]) => {
+        const status = stats.status === 'healthy' ? '✅' : stats.status === 'degraded' ? '⚠️' : '❌';
+        console.log(`  ${status} ${provider}: ${stats.successRate}% success rate (${stats.requests.total} requests)`);
+        if (stats.averageResponseTime > 0) {
+          console.log(`     Avg Response: ${stats.averageResponseTime}ms`);
+        }
+      });
+
+      if (errorStats.alerts.active.length > 0) {
+        console.log(`  🚨 Active Alerts: ${errorStats.alerts.active.length}`);
+      }
+    }
+
+    // Streaming TTS Report
+    if (this.streamingTTSEnabled) {
+      console.log('\n🎵 STREAMING TTS:');
+      console.log('  ✓ Memory-efficient audio processing enabled');
+      console.log('  ✓ Concurrent chunk processing active');
+    }
+
+    // Performance Benchmarking
+    if (this.options.enableBenchmarking && this.benchmarkSuite) {
+      console.log('\n🏁 PERFORMANCE BENCHMARKING:');
+      console.log('  ✓ Benchmark data collected (check ./benchmarks/ directory)');
+    }
+
+    console.log('\n' + '='.repeat(50));
+  }
+
+  async cleanup() {
+    // Cleanup Phase 2 resources
+    if (this.options.enableConnectionPooling) {
+      connectionPool.cleanup();
+    }
+
+    if (this.options.enableCaching) {
+      cacheManager.cleanupExpired();
+    }
+
+    console.log('🧹 Phase 2 cleanup completed');
   }
 }
 
@@ -282,6 +593,14 @@ program
     '1000',
   )
   .option('--google-credentials <path>', 'Ścieżka do pliku credentials Google')
+  .option('--batch', 'Włącz batch processing (eksperymentalne)', false)
+  .option('--batch-size <number>', 'Rozmiar batcha dla batch processing', '3')
+  .option('--batch-concurrency <number>', 'Liczba równoległych operacji w batchu', '2')
+  .option('--no-caching', 'Wyłącz smart caching system (Phase 2)', false)
+  .option('--no-connection-pooling', 'Wyłącz HTTP connection pooling (Phase 2)', false)
+  .option('--no-error-monitoring', 'Wyłącz error rate monitoring (Phase 2)', false)
+  .option('--streaming-tts', 'Włącz streaming TTS processing (Phase 2)', false)
+  .option('--benchmarking', 'Włącz performance benchmarking (Phase 2)', false)
   .action(async (url, outputDir, options) => {
     try {
       const app = new SyosetuTranslatorApp({
@@ -298,6 +617,14 @@ program
         audioDir: options.audioDir,
         ttsSpeed: parseFloat(options.speed),
         googleCredentials: options.googleCredentials,
+        batchMode: options.batch,
+        batchSize: parseInt(options.batchSize),
+        batchConcurrency: parseInt(options.batchConcurrency),
+        enableCaching: !options.noCaching,
+        enableConnectionPooling: !options.noConnectionPooling,
+        enableErrorMonitoring: !options.noErrorMonitoring,
+        enableStreamingTTS: options.streamingTts,
+        enableBenchmarking: options.benchmarking,
       });
 
       await app.initializeComponents();

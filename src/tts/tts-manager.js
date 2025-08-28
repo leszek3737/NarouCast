@@ -1,5 +1,3 @@
-import { OpenAITTS } from './openai-tts.js';
-import { GoogleCloudTTS } from './google-cloud-tts.js';
 import { AudioWriter } from './audio-writer.js';
 
 export class TTSManager {
@@ -13,22 +11,35 @@ export class TTSManager {
 
     this.ttsEngine = null;
     this.audioWriter = new AudioWriter(this.audioDir);
-
-    this.initializeTTSEngine();
+    this._initialized = false;
+    this._initPromise = null;
   }
 
-  initializeTTSEngine() {
+  async ensureInitialized() {
+    if (this._initialized) return;
+    if (this._initPromise) return this._initPromise;
+    
+    this._initPromise = this.initializeTTSEngine();
+    await this._initPromise;
+    this._initialized = true;
+  }
+
+  async initializeTTSEngine() {
     const provider = this.provider.toLowerCase();
 
     switch (provider) {
-      case 'openai':
+      case 'openai': {
+        const { OpenAITTS } = await import('./openai-tts.js');
         OpenAITTS.validateApiKey(this.openaiApiKey);
         this.ttsEngine = new OpenAITTS(this.openaiApiKey);
         break;
-      case 'google':
+      }
+      case 'google': {
+        const { GoogleCloudTTS } = await import('./google-cloud-tts.js');
         GoogleCloudTTS.validateCredentials(this.googleCredentials);
         this.ttsEngine = new GoogleCloudTTS(this.googleCredentials);
         break;
+      }
       case 'none':
       default:
         this.ttsEngine = null;
@@ -36,12 +47,13 @@ export class TTSManager {
     }
   }
 
-  isEnabled() {
+  async isEnabled() {
+    await this.ensureInitialized();
     return this.ttsEngine !== null;
   }
 
   async generateChapterAudio(chapterData, options = {}) {
-    if (!this.isEnabled()) {
+    if (!(await this.isEnabled())) {
       return null;
     }
 
@@ -55,7 +67,7 @@ export class TTSManager {
     };
 
     try {
-      const audioBuffer = await this.ttsEngine.generateAudio(
+      let audioBuffer = await this.ttsEngine.generateAudio(
         chapterData.title,
         chapterData.content,
         ttsOptions,
@@ -69,6 +81,15 @@ export class TTSManager {
         this.speed,
       );
 
+      // Force buffer cleanup to prevent memory leaks
+      audioBuffer = null;
+      
+      // Trigger manual garbage collection if available
+      if (global.gc && audioFileInfo.sizeMB > 10) {
+        console.log(`🧹 Forcing GC after ${audioFileInfo.sizeMB} MB audio generation`);
+        global.gc();
+      }
+
       console.log(
         `✓ Audio zapisane: ${audioFileInfo.path} (${audioFileInfo.sizeMB} MB)`,
       );
@@ -79,8 +100,8 @@ export class TTSManager {
     }
   }
 
-  getAvailableVoices() {
-    if (!this.isEnabled()) {
+  async getAvailableVoices() {
+    if (!(await this.isEnabled())) {
       return [];
     }
     return this.ttsEngine.getAvailableVoices();

@@ -46,6 +46,9 @@ export class AudioWriter {
     const stats = await fs.stat(fullPath);
     const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
 
+    // Clear audioBuffer reference after file write to help GC
+    audioBuffer = null;
+
     return {
       path: fullPath,
       size: stats.size,
