@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { ConfigManager } from '../../shared/config-manager.js';
+import { useState, useEffect } from "react";
+import { ConfigManager } from "../../shared/config-manager.js";
 
 const configManager = new ConfigManager();
 
@@ -27,7 +27,10 @@ export function useConfig() {
 
   const updateConfig = async (section, updates) => {
     try {
-      const updatedConfig = await configManager.updateConfigSection(section, updates);
+      const updatedConfig = await configManager.updateConfigSection(
+        section,
+        updates,
+      );
       setConfig(updatedConfig);
       return updatedConfig;
     } catch (err) {
@@ -52,6 +55,6 @@ export function useConfig() {
     error,
     updateConfig,
     saveConfig,
-    reload: loadConfig
+    reload: loadConfig,
   };
 }

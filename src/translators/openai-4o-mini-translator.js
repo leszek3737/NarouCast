@@ -1,60 +1,61 @@
-import fetch from 'node-fetch';
+import fetch from "node-fetch";
 
 export class OpenAI4oMiniTranslator {
   constructor(apiKey, config = {}) {
     this.apiKey = apiKey;
     this.config = {
-      apiUrl: 'https://api.openai.com/v1/chat/completions',
-      model: 'gpt-4o-mini',
+      apiUrl: "https://api.openai.com/v1/chat/completions",
+      model: "gpt-4o-mini",
       maxTokens: 4000,
       temperature: 0.1,
-      ...config
+      ...config,
     };
   }
 
   async translateChapter(title, content) {
     try {
-      console.log('Tłumaczenie rozdziału za pomocą OpenAI...');
-      
-      const translatedTitle = await this.translateText(title, 'title');
-      const translatedContent = await this.translateText(content, 'content');
-      
+      console.log("Tłumaczenie rozdziału za pomocą OpenAI...");
+
+      const translatedTitle = await this.translateText(title, "title");
+      const translatedContent = await this.translateText(content, "content");
+
       return {
         title: translatedTitle,
-        content: translatedContent
+        content: translatedContent,
       };
     } catch (error) {
       throw new Error(`Błąd tłumaczenia OpenAI: ${error.message}`);
     }
   }
 
-  async translateText(text, type = 'content') {
+  async translateText(text, type = "content") {
     const prompt = this.buildPrompt(text, type);
-    
+
     const requestBody = {
       model: this.config.model,
       messages: [
         {
-          role: 'system',
-          content: 'Jesteś profesjonalnym tłumaczem literatury japońskiej na język polski. Twoim zadaniem jest przetłumaczenie tekstu zachowując oryginalny ton, styl i nastrój wypowiedzi. Nie dodawaj żadnych komentarzy ani wyjaśnień - zwracaj tylko przetłumaczony tekst.'
+          role: "system",
+          content:
+            "Jesteś profesjonalnym tłumaczem literatury japońskiej na język polski. Twoim zadaniem jest przetłumaczenie tekstu zachowując oryginalny ton, styl i nastrój wypowiedzi. Nie dodawaj żadnych komentarzy ani wyjaśnień - zwracaj tylko przetłumaczony tekst.",
         },
         {
-          role: 'user',
-          content: prompt
-        }
+          role: "user",
+          content: prompt,
+        },
       ],
       max_tokens: this.config.maxTokens,
       temperature: this.config.temperature,
-      stream: false
+      stream: false,
     };
 
     const response = await fetch(this.config.apiUrl, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.apiKey}`,
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
@@ -63,23 +64,23 @@ export class OpenAI4oMiniTranslator {
     }
 
     const data = await response.json();
-    
+
     if (!data.choices || data.choices.length === 0) {
-      throw new Error('Brak odpowiedzi z API');
+      throw new Error("Brak odpowiedzi z API");
     }
 
     return data.choices[0].message.content.trim();
   }
 
   buildPrompt(text, type) {
-    if (type === 'title') {
+    if (type === "title") {
       return `Przetłumacz następujący tytuł rozdziału japońskiej powieści webowej na język polski, zachowując jego znaczenie i charakter:
 
 "${text}"
 
 Zwróć tylko przetłumaczony tytuł bez żadnych dodatkowych komentarzy.`;
     }
-    
+
     return `Przetłumacz następujący fragment japońskiej powieści webowej na język polski. Zachowaj:
 - Oryginalny ton i styl wypowiedzi
 - Charakterystykę postaci
@@ -95,12 +96,14 @@ Zwróć tylko przetłumaczony tekst bez żadnych dodatkowych komentarzy.`;
   }
 
   static validateApiKey(apiKey) {
-    if (!apiKey || typeof apiKey !== 'string') {
-      throw new Error('Brak lub nieprawidłowy klucz API OpenAI');
+    if (!apiKey || typeof apiKey !== "string") {
+      throw new Error("Brak lub nieprawidłowy klucz API OpenAI");
     }
 
-    if (!apiKey.startsWith('sk-')) {
-      throw new Error('Nieprawidłowy format klucz API OpenAI (powinien zaczynać się od "sk-")');
+    if (!apiKey.startsWith("sk-")) {
+      throw new Error(
+        'Nieprawidłowy format klucz API OpenAI (powinien zaczynać się od "sk-")',
+      );
     }
 
     return true;

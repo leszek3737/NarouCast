@@ -1,8 +1,8 @@
-const React = require('react');
+const React = require("react");
 const { useState } = React;
-const { Box, Text } = require('ink');
-const { useConfig } = require('./hooks/use-config.js');
-const { ConfigForm } = require('./components/config-form.js');
+const { Box, Text } = require("ink");
+const { useConfig } = require("./hooks/use-config.js");
+const { ConfigForm } = require("./components/config-form.js");
 
 function App() {
   const { config, loading, error, saveConfig } = useConfig();
@@ -12,11 +12,11 @@ function App() {
     try {
       await saveConfig(newConfig);
       setSaved(true);
-      
+
       // Reset saved status after 2 seconds
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
-      console.error('Błąd zapisywania konfiguracji:', err);
+      console.error("Błąd zapisywania konfiguracji:", err);
     }
   };
 
@@ -33,17 +33,14 @@ function App() {
       <Text bold color="green" marginBottom={1}>
         🚀 Syosetu Translator - Konfiguracja
       </Text>
-      
+
       {saved && (
         <Text color="green" marginBottom={1}>
           ✅ Konfiguracja zapisana pomyślnie!
         </Text>
       )}
 
-      <ConfigForm 
-        config={config} 
-        onSubmit={handleConfigSubmit}
-      />
+      <ConfigForm config={config} onSubmit={handleConfigSubmit} />
 
       <Text marginTop={1} color="gray">
         Użyj klawiszy strzałek do nawigacji, Enter do wyboru, Ctrl+C aby wyjść

@@ -1,8 +1,8 @@
-import fs from 'fs/promises';
-import path from 'path';
+import fs from "fs/promises";
+import path from "path";
 
 export class AudioWriter {
-  constructor(outputDir = './audio') {
+  constructor(outputDir = "./audio") {
     this.outputDir = outputDir;
   }
 
@@ -14,41 +14,59 @@ export class AudioWriter {
     }
   }
 
-  generateFilename(seriesId, chapterNumber, title, extension = 'mp3', speed = null) {
+  generateFilename(
+    seriesId,
+    chapterNumber,
+    title,
+    extension = "mp3",
+    speed = null,
+  ) {
     const sanitizedTitle = title
-      .replace(/[<>:"/\\|?*]/g, '')
-      .replace(/\s+/g, '_')
+      .replace(/[<>:"/\\|?*]/g, "")
+      .replace(/\s+/g, "_")
       .substring(0, 50);
-    
-    const chapterStr = String(chapterNumber).padStart(3, '0');
-    
+
+    const chapterStr = String(chapterNumber).padStart(3, "0");
+
     // Dodaj prędkość do nazwy pliku jeśli jest inna niż domyślna
     if (speed && speed !== 1.0) {
       return `${seriesId}_${chapterStr}_${sanitizedTitle}_speed_${speed}.${extension}`;
     }
-    
+
     return `${seriesId}_${chapterStr}_${sanitizedTitle}.${extension}`;
   }
 
   async writeAudioFile(audioBuffer, filename) {
     await this.ensureDirectoryExists();
-    
+
     const fullPath = path.join(this.outputDir, filename);
     await fs.writeFile(fullPath, audioBuffer);
-    
+
     // Pobierz rozmiar pliku po zapisie
     const stats = await fs.stat(fullPath);
     const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
-    
+
     return {
       path: fullPath,
       size: stats.size,
-      sizeMB: fileSizeMB
+      sizeMB: fileSizeMB,
     };
   }
 
-  async writeAudioChapter(audioBuffer, seriesId, chapterNumber, title, speed = null) {
-    const filename = this.generateFilename(seriesId, chapterNumber, title, 'mp3', speed);
+  async writeAudioChapter(
+    audioBuffer,
+    seriesId,
+    chapterNumber,
+    title,
+    speed = null,
+  ) {
+    const filename = this.generateFilename(
+      seriesId,
+      chapterNumber,
+      title,
+      "mp3",
+      speed,
+    );
     const result = await this.writeAudioFile(audioBuffer, filename);
     return result; // Zwróć pełny obiekt z informacjami o pliku
   }
