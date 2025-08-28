@@ -1,0 +1,49 @@
+{
+  "name": "syosetu-translator",
+  "version": "1.0.0",
+  "description": "Aplikacja do automatycznego pobierania i tłumaczenia rozdziałów z serwisu Syosetu",
+  "main": "src/cli/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/cli/index.js",
+    "dev": "node --inspect src/cli/index.js",
+    "build-tui": "node build-tui.js",
+    "tui": "node dist/cli/tui.cjs",
+    "config": "node src/cli/simple-tui.js",
+    "test": "node --test",
+    "lint": "eslint src/",
+    "format": "prettier --write src/"
+  },
+  "keywords": [
+    "syosetu",
+    "translator",
+    "novel",
+    "deepseek",
+    "japanese"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@google-cloud/text-to-speech": "^4.2.3",
+    "cheerio": "^1.0.0-rc.12",
+    "commander": "^11.1.0",
+    "dotenv": "^16.3.1",
+    "fluent-ffmpeg": "^2.1.2",
+    "googleapis": "^126.0.1",
+    "ink": "^6.2.2",
+    "ink-ui": "^0.4.0",
+    "inquirer": "^8.2.7",
+    "node-fetch": "^3.3.2",
+    "react": "^19.1.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.28.3",
+    "@babel/node": "^7.28.0",
+    "@babel/preset-react": "^7.27.1",
+    "eslint": "^8.57.0",
+    "prettier": "^3.1.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
