@@ -27,13 +27,13 @@ export class SyosetuParser {
 
   static sanitizeFilename(title) {
     return title
-      .replace(/[<>:"/\\|?*]/g, "_")
-      .replace(/\s+/g, "_")
+      .replace(/[<>:"/\\|?*]/g, '_')
+      .replace(/\s+/g, '_')
       .trim();
   }
 
   static buildFilename(seriesId, chapterNumber, title) {
     const sanitizedTitle = this.sanitizeFilename(title);
-    return `${seriesId}_${chapterNumber.toString().padStart(3, "0")}_${sanitizedTitle}.md`;
+    return `${seriesId}_${chapterNumber.toString().padStart(3, '0')}_${sanitizedTitle}.md`;
   }
 }

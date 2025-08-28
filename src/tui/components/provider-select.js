@@ -1,5 +1,5 @@
-import React from "react";
-import { Select } from "ink-ui";
+import React from 'react';
+import { Select } from 'ink-ui';
 
 export function ProviderSelect({
   value,

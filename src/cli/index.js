@@ -1,25 +1,25 @@
 #!/usr/bin/env node
 
-import { Command } from "commander";
-import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
-import fs from "fs";
+import { Command } from 'commander';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
 
-import { SyosetuParser } from "../parsers/syosetu-parser.js";
-import { WebScraper } from "../scrapers/web-scraper.js";
-import { DeepSeekTranslator } from "../translators/deepseek-translator.js";
-import { GoogleTranslator } from "../translators/google-translator.js";
-import { OpenAI4oMiniTranslator } from "../translators/openai-4o-mini-translator.js";
-import { MarkdownWriter } from "../file-manager/markdown-writer.js";
-import { ChapterNavigator } from "../navigation/chapter-navigator.js";
-import { TTSManager } from "../tts/tts-manager.js";
-import { ConfigManager } from "../shared/config-manager.js";
+import { SyosetuParser } from '../parsers/syosetu-parser.js';
+import { WebScraper } from '../scrapers/web-scraper.js';
+import { DeepSeekTranslator } from '../translators/deepseek-translator.js';
+import { GoogleTranslator } from '../translators/google-translator.js';
+import { OpenAI4oMiniTranslator } from '../translators/openai-4o-mini-translator.js';
+import { MarkdownWriter } from '../file-manager/markdown-writer.js';
+import { ChapterNavigator } from '../navigation/chapter-navigator.js';
+import { TTSManager } from '../tts/tts-manager.js';
+import { ConfigManager } from '../shared/config-manager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-dotenv.config({ path: path.join(__dirname, "../../.env") });
+dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 class SyosetuTranslatorApp {
   constructor(options = {}) {
@@ -28,15 +28,15 @@ class SyosetuTranslatorApp {
       apiKey: options.apiKey || process.env.DEEPSEEK_API_KEY,
       googleApiKey: options.googleApiKey || process.env.GOOGLE_API_KEY,
       openaiApiKey: options.openaiApiKey || process.env.OPENAI_API_KEY,
-      translator: options.translator || process.env.TRANSLATOR || "deepseek",
-      outputDir: options.outputDir || process.env.OUTPUT_DIR || "./output",
+      translator: options.translator || process.env.TRANSLATOR || 'deepseek',
+      outputDir: options.outputDir || process.env.OUTPUT_DIR || './output',
       autoContinue: options.autoContinue !== false,
       chapterDelay:
         options.chapterDelay || parseInt(process.env.CHAPTER_DELAY) || 3,
       maxRetries: options.maxRetries || parseInt(process.env.MAX_RETRIES) || 3,
-      tts: options.tts || process.env.TTS_PROVIDER || "none",
+      tts: options.tts || process.env.TTS_PROVIDER || 'none',
       voice: options.voice || process.env.TTS_VOICE,
-      audioDir: options.audioDir || process.env.AUDIO_DIR || "./audio",
+      audioDir: options.audioDir || process.env.AUDIO_DIR || './audio',
       ttsSpeed: options.ttsSpeed || parseFloat(process.env.TTS_SPEED) || 1.0,
       googleCredentials:
         options.googleCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS,
@@ -51,7 +51,7 @@ class SyosetuTranslatorApp {
     this.options = {
       ...this.options,
       translator:
-        this.options.translator === "deepseek" &&
+        this.options.translator === 'deepseek' &&
         savedConfig.translator?.provider
           ? savedConfig.translator.provider
           : this.options.translator,
@@ -62,17 +62,17 @@ class SyosetuTranslatorApp {
       googleApiKey:
         !this.options.googleApiKey &&
         savedConfig.translator?.apiKey &&
-        savedConfig.translator?.provider === "google"
+        savedConfig.translator?.provider === 'google'
           ? savedConfig.translator.apiKey
           : this.options.googleApiKey,
       openaiApiKey:
         !this.options.openaiApiKey &&
         savedConfig.translator?.apiKey &&
-        savedConfig.translator?.provider === "openai"
+        savedConfig.translator?.provider === 'openai'
           ? savedConfig.translator.apiKey
           : this.options.openaiApiKey,
       outputDir:
-        this.options.outputDir === "./output" && savedConfig.output?.directory
+        this.options.outputDir === './output' && savedConfig.output?.directory
           ? savedConfig.output.directory
           : this.options.outputDir,
       autoContinue:
@@ -85,7 +85,7 @@ class SyosetuTranslatorApp {
           ? savedConfig.general.chapterDelay
           : this.options.chapterDelay,
       tts:
-        this.options.tts === "none" && savedConfig.tts?.provider
+        this.options.tts === 'none' && savedConfig.tts?.provider
           ? savedConfig.tts.provider
           : this.options.tts,
       voice:
@@ -93,7 +93,7 @@ class SyosetuTranslatorApp {
           ? savedConfig.tts.voice
           : this.options.voice,
       audioDir:
-        this.options.audioDir === "./audio" &&
+        this.options.audioDir === './audio' &&
         savedConfig.output?.audioDirectory
           ? savedConfig.output.audioDirectory
           : this.options.audioDir,
@@ -126,13 +126,13 @@ class SyosetuTranslatorApp {
 
   createTranslator() {
     switch (this.options.translator.toLowerCase()) {
-      case "google":
+      case 'google':
         GoogleTranslator.validateApiKey(this.options.googleApiKey);
         return new GoogleTranslator(this.options.googleApiKey);
-      case "openai":
+      case 'openai':
         OpenAI4oMiniTranslator.validateApiKey(this.options.openaiApiKey);
         return new OpenAI4oMiniTranslator(this.options.openaiApiKey);
-      case "deepseek":
+      case 'deepseek':
       default:
         DeepSeekTranslator.validateApiKey(this.options.apiKey);
         return new DeepSeekTranslator(this.options.apiKey);
@@ -152,12 +152,12 @@ class SyosetuTranslatorApp {
 
   loadConfig() {
     try {
-      const configPath = path.join(__dirname, "../../config/config.json");
-      const configData = fs.readFileSync(configPath, "utf8");
+      const configPath = path.join(__dirname, '../../config/config.json');
+      const configData = fs.readFileSync(configPath, 'utf8');
       return JSON.parse(configData);
     } catch (error) {
       console.warn(
-        "Nie można załadować config.json, używam wartości domyślnych",
+        'Nie można załadować config.json, używam wartości domyślnych',
       );
       return {
         deepseek: {},
@@ -183,7 +183,7 @@ class SyosetuTranslatorApp {
       scrapedData.title,
       scrapedData.content,
     );
-    console.log("✓ Przetłumaczono na polski");
+    console.log('✓ Przetłumaczono na polski');
 
     const filename = SyosetuParser.buildFilename(
       parsedUrl.seriesId,
@@ -221,12 +221,12 @@ class SyosetuTranslatorApp {
 
   async run(url) {
     try {
-      console.log("🚀 Syosetu Translator - Rozpoczynam pracę");
+      console.log('🚀 Syosetu Translator - Rozpoczynam pracę');
       console.log(`📁 Katalog wyjściowy: ${this.options.outputDir}`);
       console.log(`🔄 Auto-continue: ${this.options.autoContinue}`);
       console.log(`⏱️  Opóźnienie: ${this.options.chapterDelay}s`);
       console.log(
-        `🔊 TTS: ${this.options.tts}${this.options.voice ? ` (głos: ${this.options.voice})` : ""}`,
+        `🔊 TTS: ${this.options.tts}${this.options.voice ? ` (głos: ${this.options.voice})` : ''}`,
       );
 
       const result = await this.navigator.processChapterSequence(
@@ -234,11 +234,11 @@ class SyosetuTranslatorApp {
         (chapterUrl) => this.processChapter(chapterUrl),
       );
 
-      console.log("\\n🎉 Ukończono pomyślnie!");
+      console.log('\\n🎉 Ukończono pomyślnie!');
       return result;
     } catch (error) {
       console.error(`\\n❌ Błąd: ${error.message}`);
-      if (error.stack && process.env.NODE_ENV === "development") {
+      if (error.stack && process.env.NODE_ENV === 'development') {
         console.error(error.stack);
       }
       process.exit(1);
@@ -249,39 +249,39 @@ class SyosetuTranslatorApp {
 const program = new Command();
 
 program
-  .name("syosetu-translator")
-  .description("Pobiera i tłumaczy rozdziały z serwisu Syosetu na język polski")
-  .version("1.0.0");
+  .name('syosetu-translator')
+  .description('Pobiera i tłumaczy rozdziały z serwisu Syosetu na język polski')
+  .version('1.0.0');
 
 program
-  .argument("<url>", "URL rozdziału z serwisu Syosetu")
-  .argument("[output-dir]", "Katalog wyjściowy dla plików MD", "./output")
+  .argument('<url>', 'URL rozdziału z serwisu Syosetu')
+  .argument('[output-dir]', 'Katalog wyjściowy dla plików MD', './output')
   .option(
-    "--no-auto-continue",
-    "Zatrzymaj po każdym rozdziale i czekaj na potwierdzenie",
+    '--no-auto-continue',
+    'Zatrzymaj po każdym rozdziale i czekaj na potwierdzenie',
   )
-  .option("--delay <seconds>", "Opóźnienie między rozdziałami w sekundach", "3")
-  .option("--api-key <key>", "Klucz API DeepSeek")
-  .option("--google-api-key <key>", "Klucz API Google Translate")
-  .option("--openai-api-key <key>", "Klucz API OpenAI")
+  .option('--delay <seconds>', 'Opóźnienie między rozdziałami w sekundach', '3')
+  .option('--api-key <key>', 'Klucz API DeepSeek')
+  .option('--google-api-key <key>', 'Klucz API Google Translate')
+  .option('--openai-api-key <key>', 'Klucz API OpenAI')
   .option(
-    "--translator <type>",
-    "Typ translatora: deepseek, google, openai",
-    "deepseek",
+    '--translator <type>',
+    'Typ translatora: deepseek, google, openai',
+    'deepseek',
   )
-  .option("--tts <provider>", "Provider TTS: openai, google, none", "none")
+  .option('--tts <provider>', 'Provider TTS: openai, google, none', 'none')
   .option(
-    "--voice <voice>",
-    "Wybór głosu TTS (np. alloy, nova, pl-PL-Wavenet-A)",
+    '--voice <voice>',
+    'Wybór głosu TTS (np. alloy, nova, pl-PL-Wavenet-A)',
   )
-  .option("--audio-dir <dir>", "Katalog dla plików audio", "./audio")
-  .option("--speed <speed>", "Szybkość czytania (0.25 - 4.0)", "1.0")
+  .option('--audio-dir <dir>', 'Katalog dla plików audio', './audio')
+  .option('--speed <speed>', 'Szybkość czytania (0.25 - 4.0)', '1.0')
   .option(
-    "--max-chapters <number>",
-    "Maksymalna liczba rozdziałów do przetworzenia",
-    "1000",
+    '--max-chapters <number>',
+    'Maksymalna liczba rozdziałów do przetworzenia',
+    '1000',
   )
-  .option("--google-credentials <path>", "Ścieżka do pliku credentials Google")
+  .option('--google-credentials <path>', 'Ścieżka do pliku credentials Google')
   .action(async (url, outputDir, options) => {
     try {
       const app = new SyosetuTranslatorApp({

@@ -1,23 +1,24 @@
-import fetch from "node-fetch";
+import fetch from 'node-fetch';
+import { APP_CONSTANTS, API_ENDPOINTS } from '../shared/constants.js';
 
 export class DeepSeekTranslator {
   constructor(apiKey, config = {}) {
     this.apiKey = apiKey;
     this.config = {
-      apiUrl: "https://api.deepseek.com/v1/chat/completions",
-      model: "deepseek-chat",
-      maxTokens: 4000,
-      temperature: 0.1,
+      apiUrl: API_ENDPOINTS.DEEPSEEK,
+      model: 'deepseek-chat',
+      maxTokens: APP_CONSTANTS.TRANSLATION_MAX_TOKENS,
+      temperature: APP_CONSTANTS.TRANSLATION_TEMPERATURE,
       ...config,
     };
   }
 
   async translateChapter(title, content) {
     try {
-      console.log("Tłumaczenie rozdziału...");
+      console.log('Tłumaczenie rozdziału...');
 
-      const translatedTitle = await this.translateText(title, "title");
-      const translatedContent = await this.translateText(content, "content");
+      const translatedTitle = await this.translateText(title, 'title');
+      const translatedContent = await this.translateText(content, 'content');
 
       return {
         title: translatedTitle,
@@ -28,19 +29,19 @@ export class DeepSeekTranslator {
     }
   }
 
-  async translateText(text, type = "content") {
+  async translateText(text, type = 'content') {
     const prompt = this.buildPrompt(text, type);
 
     const requestBody = {
       model: this.config.model,
       messages: [
         {
-          role: "system",
+          role: 'system',
           content:
-            "Jesteś profesjonalnym tłumaczem literatury japońskiej na język polski. Twoim zadaniem jest przetłumaczenie tekstu zachowując oryginalny ton, styl i nastrój wypowiedzi. Nie dodawaj żadnych komentarzy ani wyjaśnień - zwracaj tylko przetłumaczony tekst.",
+            'Jesteś profesjonalnym tłumaczem literatury japońskiej na język polski. Twoim zadaniem jest przetłumaczenie tekstu zachowując oryginalny ton, styl i nastrój wypowiedzi. Nie dodawaj żadnych komentarzy ani wyjaśnień - zwracaj tylko przetłumaczony tekst.',
         },
         {
-          role: "user",
+          role: 'user',
           content: prompt,
         },
       ],
@@ -51,9 +52,9 @@ export class DeepSeekTranslator {
     };
 
     const response = await fetch(this.config.apiUrl, {
-      method: "POST",
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
         Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify(requestBody),
@@ -67,14 +68,14 @@ export class DeepSeekTranslator {
     const data = await response.json();
 
     if (!data.choices || data.choices.length === 0) {
-      throw new Error("Brak odpowiedzi z API");
+      throw new Error('Brak odpowiedzi z API');
     }
 
     return data.choices[0].message.content.trim();
   }
 
   buildPrompt(text, type) {
-    if (type === "title") {
+    if (type === 'title') {
       return `Przetłumacz następujący tytuł rozdziału japońskiej powieści webowej na język polski, zachowując jego znaczenie i charakter:
 
 "${text}"
@@ -97,11 +98,11 @@ Zwróć tylko przetłumaczony tekst bez żadnych dodatkowych komentarzy.`;
   }
 
   static validateApiKey(apiKey) {
-    if (!apiKey || typeof apiKey !== "string") {
-      throw new Error("Brak lub nieprawidłowy klucz API DeepSeek");
+    if (!apiKey || typeof apiKey !== 'string') {
+      throw new Error('Brak lub nieprawidłowy klucz API DeepSeek');
     }
 
-    if (!apiKey.startsWith("sk-")) {
+    if (!apiKey.startsWith('sk-')) {
       throw new Error(
         'Nieprawidłowy format klucza API DeepSeek (powinien zaczynać się od "sk-")',
       );

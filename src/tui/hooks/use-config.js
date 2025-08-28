@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { ConfigManager } from "../../shared/config-manager.js";
+import { useState, useEffect } from 'react';
+import { ConfigManager } from '../../shared/config-manager.js';
 
 const configManager = new ConfigManager();
 

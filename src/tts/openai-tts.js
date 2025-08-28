@@ -1,25 +1,25 @@
-import fetch from "node-fetch";
+import fetch from 'node-fetch';
 
 export class OpenAITTS {
   constructor(apiKey) {
     this.apiKey = apiKey;
-    this.baseUrl = "https://api.openai.com/v1/audio/speech";
+    this.baseUrl = 'https://api.openai.com/v1/audio/speech';
     this.availableVoices = [
-      "alloy",
-      "echo",
-      "fable",
-      "onyx",
-      "nova",
-      "shimmer",
+      'alloy',
+      'echo',
+      'fable',
+      'onyx',
+      'nova',
+      'shimmer',
     ];
-    this.defaultVoice = "alloy";
-    this.model = "tts-1";
+    this.defaultVoice = 'alloy';
+    this.model = 'tts-1';
   }
 
   static validateApiKey(apiKey) {
     if (!apiKey) {
       throw new Error(
-        "OpenAI API key jest wymagany. Ustaw OPENAI_API_KEY w .env lub podaj --openai-api-key",
+        'OpenAI API key jest wymagany. Ustaw OPENAI_API_KEY w .env lub podaj --openai-api-key',
       );
     }
   }
@@ -30,23 +30,23 @@ export class OpenAITTS {
 
     if (!this.availableVoices.includes(voice)) {
       throw new Error(
-        `Nieprawidłowy głos: ${voice}. Dostępne głosy: ${this.availableVoices.join(", ")}`,
+        `Nieprawidłowy głos: ${voice}. Dostępne głosy: ${this.availableVoices.join(', ')}`,
       );
     }
 
     const response = await fetch(this.baseUrl, {
-      method: "POST",
+      method: 'POST',
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         model: this.model,
         input: text,
         voice: voice,
         speed: speed,
-        response_format: "mp3",
-        language: "pl",
+        response_format: 'mp3',
+        language: 'pl',
       }),
     });
 
@@ -94,20 +94,20 @@ export class OpenAITTS {
     }
 
     const chunks = [];
-    let currentChunk = "";
+    let currentChunk = '';
     const sentences = text.split(/[.!?]+/);
 
     for (const sentence of sentences) {
       const trimmedSentence = sentence.trim();
       if (!trimmedSentence) continue;
 
-      const sentenceWithPunctuation = trimmedSentence + ".";
+      const sentenceWithPunctuation = trimmedSentence + '.';
 
       if (
         currentChunk.length + sentenceWithPunctuation.length <=
         maxChunkSize
       ) {
-        currentChunk += (currentChunk ? " " : "") + sentenceWithPunctuation;
+        currentChunk += (currentChunk ? ' ' : '') + sentenceWithPunctuation;
       } else {
         if (currentChunk) {
           chunks.push(currentChunk);
@@ -127,8 +127,8 @@ export class OpenAITTS {
     return this.availableVoices.map((voice) => ({
       id: voice,
       name: voice.charAt(0).toUpperCase() + voice.slice(1),
-      language: "pl",
-      provider: "openai",
+      language: 'pl',
+      provider: 'openai',
     }));
   }
 }

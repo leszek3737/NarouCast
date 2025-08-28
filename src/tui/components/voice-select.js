@@ -1,5 +1,5 @@
-import React from "react";
-import { Select } from "ink-ui";
+import React from 'react';
+import { Select } from 'ink-ui';
 
 export function VoiceSelect({ value, onChange, label, provider, voices = [] }) {
   const voiceOptions = voices
@@ -7,7 +7,7 @@ export function VoiceSelect({ value, onChange, label, provider, voices = [] }) {
     .map((voice) => ({
       label: `${voice.name} (${voice.language})`,
       value: voice.id,
-      description: voice.gender ? `Płeć: ${voice.gender}` : "",
+      description: voice.gender ? `Płeć: ${voice.gender}` : '',
     }));
 
   return (
@@ -16,9 +16,9 @@ export function VoiceSelect({ value, onChange, label, provider, voices = [] }) {
       value={value}
       onChange={onChange}
       options={voiceOptions}
-      disabled={!provider || provider === "none" || voiceOptions.length === 0}
+      disabled={!provider || provider === 'none' || voiceOptions.length === 0}
       placeholder={
-        !provider ? "Wybierz najpierw providera TTS" : "Wybierz głos"
+        !provider ? 'Wybierz najpierw providera TTS' : 'Wybierz głos'
       }
     />
   );

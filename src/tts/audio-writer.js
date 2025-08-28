@@ -1,8 +1,8 @@
-import fs from "fs/promises";
-import path from "path";
+import fs from 'fs/promises';
+import path from 'path';
 
 export class AudioWriter {
-  constructor(outputDir = "./audio") {
+  constructor(outputDir = './audio') {
     this.outputDir = outputDir;
   }
 
@@ -18,15 +18,15 @@ export class AudioWriter {
     seriesId,
     chapterNumber,
     title,
-    extension = "mp3",
+    extension = 'mp3',
     speed = null,
   ) {
     const sanitizedTitle = title
-      .replace(/[<>:"/\\|?*]/g, "")
-      .replace(/\s+/g, "_")
+      .replace(/[<>:"/\\|?*]/g, '')
+      .replace(/\s+/g, '_')
       .substring(0, 50);
 
-    const chapterStr = String(chapterNumber).padStart(3, "0");
+    const chapterStr = String(chapterNumber).padStart(3, '0');
 
     // Dodaj prędkość do nazwy pliku jeśli jest inna niż domyślna
     if (speed && speed !== 1.0) {
@@ -64,7 +64,7 @@ export class AudioWriter {
       seriesId,
       chapterNumber,
       title,
-      "mp3",
+      'mp3',
       speed,
     );
     const result = await this.writeAudioFile(audioBuffer, filename);

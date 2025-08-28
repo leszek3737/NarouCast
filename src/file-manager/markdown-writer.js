@@ -1,8 +1,8 @@
-import fs from "fs/promises";
-import path from "path";
+import fs from 'fs/promises';
+import path from 'path';
 
 export class MarkdownWriter {
-  constructor(outputDir = "./output") {
+  constructor(outputDir = './output') {
     this.outputDir = outputDir;
     this.writeQueue = new Map(); // Deduplikacja zapisów
   }
@@ -32,7 +32,7 @@ export class MarkdownWriter {
       const filePath = path.join(this.outputDir, filename);
       const markdownContent = this.formatChapterAsMarkdown(chapterData);
 
-      await fs.writeFile(filePath, markdownContent, "utf8");
+      await fs.writeFile(filePath, markdownContent, 'utf8');
       console.log(`💾 Zapisano: ${filePath}`);
 
       return filePath;
@@ -64,17 +64,17 @@ export class MarkdownWriter {
 
   formatContent(content) {
     return content
-      .split("\n")
+      .split('\n')
       .map((line) => line.trim())
       .filter((line) => line.length > 0)
-      .join("\n\n");
+      .join('\n\n');
   }
 
   async ensureOutputDirectory() {
     try {
       await fs.access(this.outputDir);
     } catch (error) {
-      if (error.code === "ENOENT") {
+      if (error.code === 'ENOENT') {
         await fs.mkdir(this.outputDir, { recursive: true });
         console.log(`Utworzono katalog: ${this.outputDir}`);
       } else {
@@ -99,8 +99,8 @@ export class MarkdownWriter {
 
   sanitizeFilename(filename) {
     return filename
-      .replace(/[<>:"/\\|?*]/g, "_")
-      .replace(/\s+/g, "_")
+      .replace(/[<>:"/\\|?*]/g, '_')
+      .replace(/\s+/g, '_')
       .trim();
   }
 }
