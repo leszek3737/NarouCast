@@ -134,3 +134,12 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+.DS_Store
+audio/
+output/
+.env
+.claude/
+CLAUDE.md
+n8n-dom-465821-12dca665d026.json
+StanApp.md
