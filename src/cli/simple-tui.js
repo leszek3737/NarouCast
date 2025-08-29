@@ -138,12 +138,6 @@ async function runTUI() {
       default: config?.output?.directory || './output',
     },
     {
-      type: 'confirm',
-      name: 'autoContinue',
-      message: 'Automatycznie kontynuowa tBumaczenie?',
-      default: config?.general?.autoContinue !== false,
-    },
-    {
       type: 'number',
       name: 'chapterDelay',
       message: 'Op�znienie midzy rozdziaBami (sekundy):',
@@ -151,9 +145,9 @@ async function runTUI() {
     },
     {
       type: 'number',
-      name: 'maxChapters',
-      message: 'Maksymalna liczba rozdziaB�w do przetBumaczenia:',
-      default: config?.general?.maxChapters || 1000,
+      name: 'chapters',
+      message: 'Ile rozdziaB�w mam przetBumaczy? (0 = do koDca)',
+      default: config?.general?.chapters || 0,
     },
   ];
 
@@ -179,9 +173,8 @@ async function runTUI() {
       audioDirectory: answers.audioDir,
     },
     general: {
-      autoContinue: answers.autoContinue,
       chapterDelay: parseInt(answers.chapterDelay),
-      maxChapters: parseInt(answers.maxChapters),
+      chapters: parseInt(answers.chapters),
     },
   };
 

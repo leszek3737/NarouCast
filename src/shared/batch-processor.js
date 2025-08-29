@@ -382,12 +382,12 @@ export class BatchProcessor {
   // Utility method for processing chapters with URL chain discovery
   async processChapterChain(startUrl, processor, options = {}) {
     const {
-      maxChapters = 10,
+      chapters = 0, // 0 = do końca książki
       discoverNext = true,
       batchChainDiscovery = false
     } = options;
 
-    const chapters = [];
+    const chapterUrls = [];
     let currentUrl = startUrl;
     let chapterCount = 0;
 
@@ -395,8 +395,8 @@ export class BatchProcessor {
     if (batchChainDiscovery && discoverNext) {
       console.log('🔍 Discovering chapter chain...');
       
-      while (currentUrl && chapterCount < maxChapters) {
-        chapters.push({
+      while (currentUrl && (chapters === 0 || chapterCount < chapters)) {
+        chapterUrls.push({
           url: currentUrl,
           index: chapterCount
         });
@@ -407,12 +407,12 @@ export class BatchProcessor {
       }
     } else {
       // Add just the start URL for single chapter or simple processing
-      chapters.push({ url: startUrl, index: 0 });
+      chapterUrls.push({ url: startUrl, index: 0 });
     }
 
     // Phase 2: Batch process discovered chapters
     const results = await this.processBatch(
-      chapters,
+      chapterUrls,
       async (chapter) => {
         console.log(`📖 Processing chapter ${chapter.index + 1}: ${chapter.url}`);
         return await processor(chapter.url);

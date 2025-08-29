@@ -1,5 +1,4 @@
 import { SyosetuParser } from '../parsers/syosetu-parser.js';
-import readline from 'readline';
 import { APP_CONSTANTS } from '../shared/constants.js';
 import {
   ProcessingError,
@@ -22,13 +21,12 @@ export class ChapterNavigator {
     try {
       this.config = {
         baseDelay: APP_CONSTANTS.NAVIGATION_BASE_DELAY,
-        adaptiveDelay: true, // Adaptacyjne opóznienia
+        adaptiveDelay: true, // Adaptacyjne opï¿½znienia
         maxDelay: APP_CONSTANTS.NAVIGATION_MAX_DELAY,
         minDelay: APP_CONSTANTS.NAVIGATION_MIN_DELAY,
         chapterDelay:
           config.chapterDelay || APP_CONSTANTS.NAVIGATION_DEFAULT_DELAY,
-        autoContinue: true,
-        maxChapters: APP_CONSTANTS.DEFAULT_MAX_CHAPTERS,
+        chapters: 0, // 0 = do koÅ„ca ksiÄ…Å¼ki
         ...config,
       };
       this.processedChapters = new Set();
@@ -54,12 +52,11 @@ export class ChapterNavigator {
       const results = [];
 
       console.log(`Rozpoczynam przetwarzanie od: ${startUrl}`);
-      console.log(`Auto-continue: ${this.config.autoContinue}`);
       console.log(
-        `Opóznienie midzy rozdziaBami: ${this.config.chapterDelay}ms\n`,
+        `Opï¿½znienie midzy rozdziaBami: ${this.config.chapterDelay}ms\n`,
       );
 
-      while (currentUrl && chapterCount < this.config.maxChapters) {
+      while (currentUrl && (this.config.chapters === 0 || chapterCount < this.config.chapters)) {
         const startTime = Date.now();
         try {
           if (this.processedChapters.has(currentUrl)) {
@@ -93,17 +90,10 @@ export class ChapterNavigator {
           const nextUrl = result.nextChapterUrl;
 
           if (!nextUrl) {
-            console.log('\\n<‰ Brak kolejnego rozdziaBu - seria zakoDczona!');
+            console.log('\\n<ï¿½ Brak kolejnego rozdziaBu - seria zakoDczona!');
             break;
           }
 
-          if (!this.config.autoContinue) {
-            const shouldContinue = await this.promptContinue(nextUrl);
-            if (!shouldContinue) {
-              console.log('Zatrzymano na |danie u|ytkownika.');
-              break;
-            }
-          }
 
           console.log(`Nastpny rozdziaB: ${nextUrl}`);
 
@@ -114,7 +104,7 @@ export class ChapterNavigator {
 
           // Use adaptive delay or fallback to configured delay
           const delay = this.calculateAdaptiveDelay();
-          console.log(`ñ Inteligentne opóznienie: ${delay}ms`);
+          console.log(`ï¿½ Inteligentne opï¿½znienie: ${delay}ms`);
           await this.delay(delay);
           currentUrl = nextUrl;
 
@@ -138,7 +128,7 @@ export class ChapterNavigator {
 
           // Exponential backoff for errors
           const errorDelay = this.calculateErrorDelay();
-          console.log(`ó BBd, czekam: ${errorDelay}ms`);
+          console.log(`ï¿½ BBd, czekam: ${errorDelay}ms`);
           await this.delay(errorDelay);
 
           // Skip to next chapter on recoverable errors
@@ -164,14 +154,14 @@ export class ChapterNavigator {
         }
       }
 
-      if (chapterCount >= this.config.maxChapters) {
+      if (this.config.chapters > 0 && chapterCount >= this.config.chapters) {
         console.log(
-          `\\n   Osignito maksymaln liczb rozdziaBów (${this.config.maxChapters})`,
+          `\\nï¿½  Osignito limit rozdziaBï¿½w (${this.config.chapters})`,
         );
       }
 
-      console.log('\\n=Ê Podsumowanie:');
-      console.log(`- Przetworzonych rozdziaBów: ${chapterCount}`);
+      console.log('\\n=ï¿½ Podsumowanie:');
+      console.log(`- Przetworzonych rozdziaBï¿½w: ${chapterCount}`);
       console.log(`- Rozpoczto od: ${startUrl}`);
       console.log(
         `- ZakoDczono na: ${currentUrl || 'ostatnim dostpnym rozdziale'}`,
@@ -231,51 +221,11 @@ export class ChapterNavigator {
     }
   }
 
-  async promptContinue(nextUrl) {
-    try {
-      if (!nextUrl || typeof nextUrl !== 'string') {
-        throw new ValidationError('Invalid nextUrl provided for continuation prompt');
-      }
-      
-      return new Promise((resolve, reject) => {
-        const rl = readline.createInterface({
-          input: process.stdin,
-          output: process.stdout,
-        });
-
-        const timeout = setTimeout(() => {
-          rl.close();
-          reject(new ProcessingError('User prompt timeout after 60 seconds'));
-        }, 60000); // 60 second timeout
-
-        rl.question(
-          `Kontynuowa z nastpnym rozdziaBem (${nextUrl})? (t/n): `,
-          (answer) => {
-            clearTimeout(timeout);
-            rl.close();
-            
-            if (typeof answer !== 'string') {
-              reject(new ValidationError('Invalid user input received'));
-              return;
-            }
-            
-            resolve(answer.toLowerCase().startsWith('t'));
-          },
-        );
-      });
-    } catch (error) {
-      ErrorHandler.handleError(error, { operation: 'promptContinue', nextUrl });
-      throw new ProcessingError(`Failed to prompt user for continuation: ${error.message}`);
-    }
-  }
 
   delay(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  setAutoContinue(autoContinue) {
-    this.config.autoContinue = autoContinue;
-  }
 
   setChapterDelay(delay) {
     this.config.chapterDelay = delay;
@@ -295,7 +245,7 @@ export class ChapterNavigator {
       return this.config.chapterDelay;
     }
 
-    // Krótsze opóznienie dla szybkiego przetwarzania
+    // Krï¿½tsze opï¿½znienie dla szybkiego przetwarzania
     const adaptiveDelay = Math.max(
       this.config.minDelay,
       Math.min(

@@ -27,7 +27,7 @@ export class ConfigManager {
     } catch (accessError) {
       try {
         await fs.mkdir(this.configDir, { recursive: true });
-        console.log(`=Á Created config directory: ${this.configDir}`);
+        console.log(`=ï¿½ Created config directory: ${this.configDir}`);
       } catch (mkdirError) {
         ErrorHandler.handleError(mkdirError, { operation: 'ensureConfigDir', path: this.configDir });
         throw new FileSystemError(
@@ -68,7 +68,7 @@ export class ConfigManager {
             this.encryptionKey.toString('hex'),
             'utf8',
           );
-          console.log('=¾ Saved new encryption key');
+          console.log('=ï¿½ Saved new encryption key');
         } catch (writeError) {
           ErrorHandler.handleError(writeError, { operation: 'saveEncryptionKey', path: this.encryptionKeyPath });
           throw new FileSystemError(
@@ -191,7 +191,7 @@ export class ConfigManager {
         configData = await fs.readFile(this.configPath, 'utf8');
       } catch (readError) {
         if (readError.code === 'ENOENT') {
-          console.log('=Ä Config file not found, using defaults');
+          console.log('=ï¿½ Config file not found, using defaults');
           return this.getDefaultConfig();
         }
         ErrorHandler.handleError(readError, { operation: 'loadConfig', path: this.configPath });
@@ -207,7 +207,7 @@ export class ConfigManager {
         parsedData = JSON.parse(configData);
       } catch (parseError) {
         ErrorHandler.handleError(parseError, { operation: 'parseConfig', path: this.configPath });
-        console.warn('  Config file corrupted, using defaults');
+        console.warn('ï¿½ Config file corrupted, using defaults');
         return this.getDefaultConfig();
       }
 
@@ -218,12 +218,12 @@ export class ConfigManager {
           console.log('= Loaded encrypted configuration');
           return decryptedConfig;
         } catch (decryptError) {
-          console.warn('  Failed to decrypt config, using defaults:', decryptError.message);
+          console.warn('ï¿½ Failed to decrypt config, using defaults:', decryptError.message);
           return this.getDefaultConfig();
         }
       }
 
-      console.log('=Ä Loaded plain configuration');
+      console.log('=ï¿½ Loaded plain configuration');
       return parsedData;
     } catch (error) {
       ErrorHandler.handleError(error, { operation: 'loadConfig' });
@@ -232,7 +232,7 @@ export class ConfigManager {
         throw error;
       }
       
-      console.warn('  Config loading failed, using defaults:', error.message);
+      console.warn('ï¿½ Config loading failed, using defaults:', error.message);
       return this.getDefaultConfig();
     }
   }
@@ -261,13 +261,13 @@ export class ConfigManager {
         const encryptedConfig = await this.encryptData(configToSave);
         dataToWrite = JSON.stringify(encryptedConfig, null, 2);
       } else {
-        console.log('=Ä Saving plain configuration (no sensitive data)');
+        console.log('=ï¿½ Saving plain configuration (no sensitive data)');
         dataToWrite = JSON.stringify(configToSave, null, 2);
       }
 
       try {
         await fs.writeFile(this.configPath, dataToWrite, 'utf8');
-        console.log(`=¾ Configuration saved to: ${this.configPath}`);
+        console.log(`=ï¿½ Configuration saved to: ${this.configPath}`);
       } catch (writeError) {
         ErrorHandler.handleError(writeError, { operation: 'saveConfig', path: this.configPath });
         throw new FileSystemError(
@@ -303,9 +303,8 @@ export class ConfigManager {
         audioDirectory: './audio',
       },
       general: {
-        autoContinue: true,
         chapterDelay: 3,
-        maxChapters: 1000,
+        chapters: 0,
       },
     };
   }

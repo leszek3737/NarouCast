@@ -312,9 +312,8 @@ export class ConfigManager implements ConfigManagerInterface {
         audioDirectory: './audio',
       },
       general: {
-        autoContinue: true,
         chapterDelay: 3,
-        maxChapters: 1000,
+        chapters: 0,
       },
     };
   }

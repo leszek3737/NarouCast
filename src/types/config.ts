@@ -22,9 +22,8 @@ export interface OutputConfig {
 }
 
 export interface GeneralConfig {
-  autoContinue: boolean;
   chapterDelay: number;
-  maxChapters: number;
+  chapters: number;
 }
 
 export interface AppConfig {

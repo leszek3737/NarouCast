@@ -291,9 +291,8 @@ describe('ConfigManager', () => {
       assert.equal(defaultConfig.output.audioDirectory, './audio');
       
       assert.ok(defaultConfig.general);
-      assert.equal(defaultConfig.general.autoContinue, true);
       assert.equal(defaultConfig.general.chapterDelay, 3);
-      assert.equal(defaultConfig.general.maxChapters, 1000);
+      assert.equal(defaultConfig.general.chapters, 0);
     });
   });
 

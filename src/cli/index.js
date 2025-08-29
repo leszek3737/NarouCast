@@ -34,7 +34,6 @@ class SyosetuTranslatorApp {
       openaiApiKey: options.openaiApiKey || process.env.OPENAI_API_KEY,
       translator: options.translator || process.env.TRANSLATOR || 'deepseek',
       outputDir: options.outputDir || process.env.OUTPUT_DIR || './output',
-      autoContinue: options.autoContinue !== false,
       chapterDelay:
         options.chapterDelay !== undefined ? options.chapterDelay :
         (parseInt(process.env.CHAPTER_DELAY) || 3),
@@ -94,15 +93,14 @@ class SyosetuTranslatorApp {
         this.options.outputDir === './output' && savedConfig.output?.directory
           ? savedConfig.output.directory
           : this.options.outputDir,
-      autoContinue:
-        this.options.autoContinue &&
-        savedConfig.general?.autoContinue !== undefined
-          ? savedConfig.general.autoContinue
-          : this.options.autoContinue,
       chapterDelay:
         this.options.chapterDelay === 3 && savedConfig.general?.chapterDelay !== undefined
           ? savedConfig.general.chapterDelay
           : this.options.chapterDelay,
+      chapters:
+        this.options.chapters === 0 && savedConfig.general?.chapters !== undefined
+          ? savedConfig.general.chapters
+          : this.options.chapters,
       tts:
         this.options.tts === 'none' && savedConfig.tts?.provider
           ? savedConfig.tts.provider
@@ -143,10 +141,9 @@ class SyosetuTranslatorApp {
     this.writer = new MarkdownWriter(this.options.outputDir);
     this.ttsManager = this.createTTSManager();
     this.navigator = new ChapterNavigator({
-      chapterDelay: this.options.chapterDelay === 0 ? 0 : this.options.chapterDelay * 1000,
-      autoContinue: this.options.autoContinue,
-      maxChapters: this.options.maxChapters || 1000,
-    });
+        chapterDelay: this.options.chapterDelay === 0 ? 0 : this.options.chapterDelay * 1000,
+        chapters: this.options.chapters,
+      });
   }
 
   async initializePhase2Optimizations() {
@@ -444,7 +441,6 @@ class SyosetuTranslatorApp {
     try {
       console.log('=� Syosetu Translator - Rozpoczynam prac');
       console.log(`=� Katalog wyj[ciowy: ${this.options.outputDir}`);
-      console.log(`= Auto-continue: ${this.options.autoContinue}`);
       console.log(`�  Op�znienie: ${this.options.chapterDelay}s`);
       console.log(
         `=
@@ -466,8 +462,7 @@ class SyosetuTranslatorApp {
             url,
             (chapterUrl) => this.processChapter(chapterUrl),
             {
-              maxChapters: this.options.maxChapters,
-              discoverNext: this.options.autoContinue,
+              chapters: this.options.chapters,
               batchChainDiscovery: false // Keep simple for now
             }
           )
@@ -584,10 +579,6 @@ program
 program
   .argument('<url>', 'URL rozdziaBu z serwisu Syosetu')
   .argument('[output-dir]', 'Katalog wyj[ciowy dla plik�w MD', './output')
-  .option(
-    '--no-auto-continue',
-    'Zatrzymaj po ka|dym rozdziale i czekaj na potwierdzenie',
-  )
   .option('--delay <seconds>', 'Op�znienie midzy rozdziaBami w sekundach', '3')
   .option('--api-key <key>', 'Klucz API DeepSeek')
   .option('--google-api-key <key>', 'Klucz API Google Translate')
@@ -605,9 +596,9 @@ program
   .option('--audio-dir <dir>', 'Katalog dla plik�w audio', './audio')
   .option('--speed <speed>', 'Szybko[ czytania (0.25 - 4.0)', '1.0')
   .option(
-    '--max-chapters <number>',
-    'Maksymalna liczba rozdziaB�w do przetworzenia',
-    '1000',
+    '--chapters <number>',
+    'Liczba rozdziaB�w do przetworzenia (0 = do koDca)',
+    '0',
   )
   .option('--google-credentials <path>', 'Zcie|ka do pliku credentials Google')
   .option('--batch', 'WBcz batch processing (eksperymentalne)', false)
@@ -626,9 +617,8 @@ program
         openaiApiKey: options.openaiApiKey,
         translator: options.translator,
         outputDir,
-        autoContinue: options.autoContinue,
         chapterDelay: parseInt(options.delay),
-        maxChapters: parseInt(options.maxChapters),
+        chapters: parseInt(options.chapters),
         tts: options.tts,
         voice: options.voice,
         audioDir: options.audioDir,
