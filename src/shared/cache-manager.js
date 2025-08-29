@@ -113,7 +113,6 @@ class LRUCache {
    * Get cache statistics
    */
   getStats() {
-    const now = Date.now();
     let expiredCount = 0;
     
     for (const entry of this.cache.values()) {
@@ -287,11 +286,11 @@ class CacheManager {
 }
 
 // Global cache manager instance
-const cacheManager = new CacheManager();
+export const cacheManager = new CacheManager();
 
 // Cleanup expired entries every 15 minutes
 setInterval(() => {
   cacheManager.cleanupExpired();
 }, 900000);
 
-module.exports = { CacheManager, LRUCache, cacheManager };
+export { CacheManager, LRUCache };

@@ -4,7 +4,6 @@
  */
 
 import { performance } from 'perf_hooks';
-import { execSync } from 'child_process';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -70,7 +69,7 @@ class BenchmarkTest {
     }
   }
 
-  async _runSingleIteration(isWarmup = false) {
+  async _runSingleIteration() {
     const startTime = performance.now();
     let memoryBefore, memoryAfter;
     

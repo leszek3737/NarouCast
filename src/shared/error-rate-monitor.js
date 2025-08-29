@@ -41,7 +41,7 @@ class ProviderMetrics {
   /**
    * Record successful request
    */
-  recordSuccess(responseTime = 0, operation = 'default') {
+  recordSuccess(responseTime = 0) {
     this.requests.total++;
     this.requests.successful++;
     this.consecutiveFailures = 0;
@@ -63,7 +63,7 @@ class ProviderMetrics {
   /**
    * Record failed request
    */
-  recordFailure(errorType = 'unknown', operation = 'default', isTimeout = false, isRateLimit = false) {
+  recordFailure(errorType = 'unknown', isTimeout = false, isRateLimit = false) {
     this.requests.total++;
     this.requests.failed++;
     this.consecutiveFailures++;
@@ -100,7 +100,7 @@ class ProviderMetrics {
   /**
    * Record retry attempt
    */
-  recordRetry(operation = 'default') {
+  recordRetry() {
     this.requests.retried++;
     this._updateHourlyStats('retry');
     this.lastUpdated = Date.now();
@@ -422,7 +422,6 @@ class ErrorRateMonitor {
    */
   _checkAlerts(provider) {
     const metrics = provider.getMetrics();
-    const now = Date.now();
 
     // Error rate alert
     if (metrics.errorRate > this.alertThresholds.errorRate) {

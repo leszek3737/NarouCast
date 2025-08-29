@@ -3,9 +3,8 @@
  * Process and stream audio chunks directly to filesystem without memory buffering
  */
 
-import { Writable, Readable, Transform } from 'stream';
+import { Writable } from 'stream';
 import { createWriteStream } from 'fs';
-import path from 'path';
 
 /**
  * Streaming audio writer - writes chunks as they arrive
@@ -103,7 +102,6 @@ export class AudioChunkProcessor {
 
   async processChunksConcurrently(ttsEngine, textChunks, options = {}) {
     const results = [];
-    const processingPromises = [];
 
     // Process chunks in batches to control concurrency
     for (let i = 0; i < textChunks.length; i += this.maxConcurrentChunks) {

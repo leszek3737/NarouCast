@@ -9,25 +9,42 @@ export class Semaphore {
     this.capacity = capacity;
     this.running = 0;
     this.queue = [];
+    this.stats = {
+      totalAcquisitions: 0,
+      totalReleases: 0,
+      maxQueueLength: 0,
+      totalWaitTime: 0,
+      lastAcquireTime: 0
+    };
   }
 
   async acquire() {
+    this.stats.totalAcquisitions++;
+    const startTime = Date.now();
+    
+    if (this.running < this.capacity) {
+      this.running++;
+      this.stats.lastAcquireTime = Date.now();
+      return;
+    }
+
     return new Promise((resolve, reject) => {
-      if (this.running < this.capacity) {
-        this.running++;
-        resolve();
-      } else {
-        this.queue.push({ resolve, reject });
-      }
+      this.queue.push({ resolve, reject, startTime });
+      this.stats.maxQueueLength = Math.max(this.stats.maxQueueLength, this.queue.length);
     });
   }
 
   release() {
+    this.stats.totalReleases++;
     this.running--;
+    
     if (this.queue.length > 0) {
-      const { resolve } = this.queue.shift();
+      const next = this.queue.shift();
+      const waitTime = Date.now() - next.startTime;
+      this.stats.totalWaitTime += waitTime;
       this.running++;
-      resolve();
+      this.stats.lastAcquireTime = Date.now();
+      next.resolve();
     }
   }
 
@@ -39,6 +56,39 @@ export class Semaphore {
       this.release();
     }
   }
+
+  getStats() {
+    return {
+      ...this.stats,
+      currentQueueLength: this.queue.length,
+      currentRunning: this.running,
+      capacity: this.capacity,
+      avgWaitTime: this.stats.totalAcquisitions > 0 
+        ? this.stats.totalWaitTime / this.stats.totalAcquisitions 
+        : 0,
+      utilization: this.capacity > 0 ? this.running / this.capacity : 0
+    };
+  }
+
+  resize(newCapacity) {
+    if (newCapacity < 1) throw new Error('Capacity must be at least 1');
+    
+    const oldCapacity = this.capacity;
+    this.capacity = newCapacity;
+    
+    // Release additional slots if capacity increased
+    const additionalSlots = Math.max(0, newCapacity - oldCapacity);
+    for (let i = 0; i < additionalSlots && this.queue.length > 0; i++) {
+      const next = this.queue.shift();
+      const waitTime = Date.now() - next.startTime;
+      this.stats.totalWaitTime += waitTime;
+      this.running++;
+      this.stats.lastAcquireTime = Date.now();
+      next.resolve();
+    }
+    
+    return this.getStats();
+  }
 }
 
 export class BatchProcessor {
@@ -46,13 +96,21 @@ export class BatchProcessor {
     this.batchSize = options.batchSize || 3;
     this.maxConcurrency = options.maxConcurrency || 2;
     this.delayBetweenBatches = options.delayBetweenBatches || 1000;
+    this.adaptiveConcurrency = options.adaptiveConcurrency !== false;
+    this.concurrencyCheckInterval = options.concurrencyCheckInterval || 5000;
     this.semaphore = new Semaphore(this.maxConcurrency);
     this.metrics = {
       totalProcessed: 0,
       totalFailed: 0,
       batchCount: 0,
-      startTime: null
+      startTime: null,
+      concurrencyChanges: [],
+      lastConcurrencyCheck: 0
     };
+    
+    if (this.adaptiveConcurrency) {
+      this._setupAdaptiveConcurrency();
+    }
   }
 
   async processBatch(items, processor, context = '') {
@@ -78,6 +136,11 @@ export class BatchProcessor {
       results.push(...batchResults);
 
       this.metrics.batchCount++;
+
+      // Adaptive concurrency adjustment
+      if (this.adaptiveConcurrency) {
+        await this._checkAndAdjustConcurrency();
+      }
 
       // Memory cleanup between batches
       if (batchIndex < batches.length - 1) {
@@ -220,9 +283,10 @@ export class BatchProcessor {
     const successCount = results.filter(r => !r.error).length;
     const errorCount = results.filter(r => r.error).length;
     const throughput = results.length / (duration / 1000);
+    const semaphoreStats = this.semaphore.getStats();
 
     console.log('\n📊 BATCH PROCESSING STATS');
-    console.log('='.repeat(40));
+    console.log('='.repeat(50));
     console.log(`Total items: ${results.length}`);
     console.log(`Success: ${successCount}`);
     console.log(`Errors: ${errorCount}`);
@@ -230,11 +294,89 @@ export class BatchProcessor {
     console.log(`Duration: ${(duration / 1000).toFixed(2)}s`);
     console.log(`Throughput: ${throughput.toFixed(2)} items/sec`);
     console.log(`Success rate: ${((successCount / results.length) * 100).toFixed(1)}%`);
-    console.log('='.repeat(40));
+    console.log('\n🎯 CONCURRENCY STATS');
+    console.log(`Final concurrency: ${this.maxConcurrency}`);
+    console.log(`Max queue length: ${semaphoreStats.maxQueueLength}`);
+    console.log(`Avg wait time: ${semaphoreStats.avgWaitTime.toFixed(2)}ms`);
+    console.log(`Utilization: ${(semaphoreStats.utilization * 100).toFixed(1)}%`);
+    
+    if (this.metrics.concurrencyChanges.length > 0) {
+      console.log(`Concurrency changes: ${this.metrics.concurrencyChanges.length}`);
+      this.metrics.concurrencyChanges.forEach(change => {
+        console.log(`  ${change.timestamp}: ${change.old} → ${change.new} (${change.reason})`);
+      });
+    }
+    console.log('='.repeat(50));
   }
 
   delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  _setupAdaptiveConcurrency() {
+    this.metrics.lastConcurrencyCheck = Date.now();
+  }
+
+  async _checkAndAdjustConcurrency() {
+    const now = Date.now();
+    if (now - this.metrics.lastConcurrencyCheck < this.concurrencyCheckInterval) {
+      return;
+    }
+
+    this.metrics.lastConcurrencyCheck = now;
+    const stats = this.semaphore.getStats();
+    
+    // High queue length and low utilization - increase concurrency
+    if (stats.currentQueueLength > 5 && stats.utilization < 0.7) {
+      const newConcurrency = Math.min(this.maxConcurrency * 2, 20); // Cap at 20
+      if (newConcurrency > this.maxConcurrency) {
+        this._adjustConcurrency(newConcurrency, 'High queue, low utilization');
+      }
+    }
+    
+    // Low queue length and high utilization - decrease concurrency
+    if (stats.currentQueueLength === 0 && stats.utilization > 0.9 && this.maxConcurrency > 2) {
+      const newConcurrency = Math.max(2, Math.floor(this.maxConcurrency * 0.8));
+      if (newConcurrency < this.maxConcurrency) {
+        this._adjustConcurrency(newConcurrency, 'Low queue, high utilization');
+      }
+    }
+
+    // Very high wait times - increase concurrency
+    if (stats.avgWaitTime > 1000 && this.maxConcurrency < 10) {
+      const newConcurrency = Math.min(this.maxConcurrency + 2, 10);
+      this._adjustConcurrency(newConcurrency, 'High wait times');
+    }
+  }
+
+  _adjustConcurrency(newConcurrency, reason) {
+    const oldConcurrency = this.maxConcurrency;
+    
+    if (newConcurrency === oldConcurrency) {
+      return;
+    }
+
+    console.log(`🔄 Adjusting concurrency: ${oldConcurrency} → ${newConcurrency} (${reason})`);
+    
+    // Resize the semaphore
+    this.semaphore.resize(newConcurrency);
+    this.maxConcurrency = newConcurrency;
+    
+    // Record the change
+    this.metrics.concurrencyChanges.push({
+      timestamp: new Date().toISOString(),
+      old: oldConcurrency,
+      new: newConcurrency,
+      reason: reason
+    });
+  }
+
+  getConcurrencyStats() {
+    return {
+      current: this.maxConcurrency,
+      changes: this.metrics.concurrencyChanges,
+      semaphore: this.semaphore.getStats()
+    };
   }
 
   // Utility method for processing chapters with URL chain discovery

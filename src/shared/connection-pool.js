@@ -259,7 +259,7 @@ class AdvancedHttpAgent {
     const totalConnections = this.connections.size;
     
     const connectionsByHost = {};
-    for (const [key, connection] of this.connections.entries()) {
+    for (const [, connection] of this.connections.entries()) {
       const host = connection.host;
       connectionsByHost[host] = (connectionsByHost[host] || 0) + 1;
     }
