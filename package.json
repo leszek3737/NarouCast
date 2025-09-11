@@ -15,12 +15,7 @@
     "test:integration": "node --test tests/integration/",
     "test:watch": "node --test --watch",
     "lint": "eslint src/",
-    "format": "prettier --write src/",
-    "build": "tsc",
-    "build:watch": "tsc --watch",
-    "build:clean": "rm -rf dist && npm run build",
-    "type-check": "tsc --noEmit",
-    "dev:ts": "tsx src/cli/index.ts"
+    "format": "prettier --write src/"
   },
   "keywords": [
     "syosetu",
@@ -47,12 +42,9 @@
     "@babel/core": "^7.28.3",
     "@babel/node": "^7.28.0",
     "@babel/preset-react": "^7.27.1",
-    "@types/node": "^24.3.0",
     "eslint": "^8.57.0",
     "eslint-plugin-react": "^7.37.5",
-    "prettier": "^3.1.1",
-    "tsx": "^4.20.5",
-    "typescript": "^5.9.2"
+    "prettier": "^3.1.1"
   },
   "engines": {
     "node": ">=18.0.0"
