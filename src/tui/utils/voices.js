@@ -360,6 +360,11 @@ export const TRANSLATOR_PROVIDERS = [
     name: 'DeepSeek',
     description: 'Tłumaczenie przez DeepSeek API',
   },
+  {
+    id: 'openai-compatible',
+    name: 'OpenAI-compatible',
+    description: 'Dowolny endpoint kompatybilny z OpenAI API',
+  },
 ];
 
 export const TTS_PROVIDERS = [

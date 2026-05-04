@@ -32,6 +32,9 @@ class SyosetuTranslatorApp {
       apiKey: options.apiKey || process.env.DEEPSEEK_API_KEY,
       googleApiKey: options.googleApiKey || process.env.GOOGLE_API_KEY,
       openaiApiKey: options.openaiApiKey || process.env.OPENAI_API_KEY,
+      genericApiKey: options.genericApiKey || process.env.GENERIC_OPENAI_API_KEY,
+      genericApiUrl: options.genericApiUrl || process.env.GENERIC_OPENAI_API_URL,
+      genericModel: options.genericModel || process.env.GENERIC_OPENAI_MODEL,
       translator: options.translator || process.env.TRANSLATOR || 'deepseek',
       outputDir: options.outputDir || process.env.OUTPUT_DIR || './output',
       chapterDelay:
@@ -89,6 +92,18 @@ class SyosetuTranslatorApp {
               ? savedConfig.translator.apiKey
               : savedConfig.tts.apiKey)
           : this.options.openaiApiKey,
+      genericApiKey:
+        !this.options.genericApiKey && savedConfig.translator?.provider === 'openai-compatible'
+          ? savedConfig.translator.apiKey
+          : this.options.genericApiKey,
+      genericApiUrl:
+        !this.options.genericApiUrl && savedConfig.translator?.apiUrl
+          ? savedConfig.translator.apiUrl
+          : this.options.genericApiUrl,
+      genericModel:
+        !this.options.genericModel && savedConfig.translator?.model
+          ? savedConfig.translator.model
+          : this.options.genericModel,
       outputDir:
         this.options.outputDir === './output' && savedConfig.output?.directory
           ? savedConfig.output.directory
@@ -205,6 +220,14 @@ class SyosetuTranslatorApp {
         const { OpenAI4oMiniTranslator } = await import('../translators/openai-4o-mini-translator.js');
         OpenAI4oMiniTranslator.validateApiKey(this.options.openaiApiKey);
         return new OpenAI4oMiniTranslator(this.options.openaiApiKey);
+      }
+      case 'openai-compatible': {
+        const { GenericOpenAITranslator } = await import('../translators/generic-openai-translator.js');
+        GenericOpenAITranslator.validateApiKey(this.options.genericApiKey);
+        return new GenericOpenAITranslator(this.options.genericApiKey, {
+          apiUrl: this.options.genericApiUrl,
+          model: this.options.genericModel,
+        });
       }
       case 'deepseek':
       default: {
@@ -583,9 +606,12 @@ program
   .option('--api-key <key>', 'Klucz API DeepSeek')
   .option('--google-api-key <key>', 'Klucz API Google Translate')
   .option('--openai-api-key <key>', 'Klucz API OpenAI')
+  .option('--generic-api-key <key>', 'Klucz API dla OpenAI-compatible')
+  .option('--generic-api-url <url>', 'URL API dla OpenAI-compatible')
+  .option('--generic-model <model>', 'Model dla OpenAI-compatible')
   .option(
     '--translator <type>',
-    'Typ translatora: deepseek, google, openai',
+    'Typ translatora: deepseek, google, openai, openai-compatible',
     'deepseek',
   )
   .option('--tts <provider>', 'Provider TTS: openai, google, none', 'none')
@@ -615,6 +641,9 @@ program
         apiKey: options.apiKey,
         googleApiKey: options.googleApiKey,
         openaiApiKey: options.openaiApiKey,
+        genericApiKey: options.genericApiKey,
+        genericApiUrl: options.genericApiUrl,
+        genericModel: options.genericModel,
         translator: options.translator,
         outputDir,
         chapterDelay: parseInt(options.delay),
